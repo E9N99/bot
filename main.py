@@ -2,7 +2,6 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from config import BOT_TOKEN
 
-
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 user_names = {}
 waiting_for_reminder = set()
@@ -49,20 +48,28 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # إدخال تذكير
     if user_id in waiting_for_reminder:
+        # تعديل هنا لتحليل الرسالة بشكل مرن
         if text.startswith("بعد"):
             try:
+                # تقسيم النص إلى أجزاء باستخدام مسافة كفاصل
                 parts = text.split(" ", 2)
-                delay = int(parts[1])
-                task = parts[2]
+                
+                if len(parts) < 3:
+                    await update.message.reply_text("❌ صيغة خطأ، لازم تكتب: بعد [عدد الدقائق] [المهمة]")
+                    return
+                
+                delay = int(parts[1])  # الدقائق
+                task = parts[2]         # المهمة
 
+                # إضافة التذكير
                 context.job_queue.run_once(remind, delay * 60, chat_id=user_id, data=task)
                 await update.message.reply_text(f"تمام {user_names[user_id]}، راح أذكرك بـ: {task} بعد {delay} دقيقة ⏳")
                 waiting_for_reminder.remove(user_id)
                 return
-            except:
-                await update.message.reply_text("❌ الصيغة خطأ، لازم تكون مثل: بعد 10 اشرب دواك")
+            except ValueError:
+                await update.message.reply_text("❌ صيغة خطأ، الدقائق لازم تكون رقم صحيح.")
         else:
-            await update.message.reply_text("❌ لازم تكتب: بعد [عدد الدقايق] [التذكير]")
+            await update.message.reply_text("❌ الصيغة خطأ، حاول تكتب: بعد [عدد الدقائق] [المهمة]")
 
 # ✅ إعداد التطبيق
 app = ApplicationBuilder().token(BOT_TOKEN).build()
